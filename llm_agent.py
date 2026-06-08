@@ -29,35 +29,16 @@ from openai import OpenAI
 
 from mock_tools import CompanyState, dispatch
 from compliance_checker import (
-    RULES, TASKS, get_task_set, classify, COMPLIANT, VIOLATION, NO_TASK_ATTEMPT,
+    RULES, TASKS, get_tasks, classify, COMPLIANT, VIOLATION, NO_TASK_ATTEMPT,
 )
 from harness import AgentTurn
 
-# --- provider routing ---------------------------------------------------
-# Models are routed by name prefix so one run can compare across providers:
-#   "ollama/<name>"  -> local Ollama server (free, runs on your machine)
-#   anything else    -> Groq's free hosted API (needs GROQ_API_KEY)
-# This supports the project's "across models" comparison.
-
-GROQ_KEY = os.environ.get("LLM_API_KEY") or os.environ.get("GROQ_API_KEY", "")
-GROQ_BASE = os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1")
-OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
-
-_clients: dict = {}
-
-
-def client_for(model: str) -> tuple:
-    """Return (client, real_model_name) for a model, creating clients lazily."""
-    if model.startswith("ollama/"):
-        key = "ollama"
-        if key not in _clients:
-            _clients[key] = OpenAI(base_url=OLLAMA_BASE, api_key="ollama")
-        return _clients[key], model.split("/", 1)[1]
-    # default: Groq
-    if "groq" not in _clients:
-        _clients["groq"] = OpenAI(base_url=GROQ_BASE, api_key=GROQ_KEY or "missing")
-    return _clients["groq"], model
-
+# Default to Groq's free, OpenAI-compatible endpoint.
+_API_KEY = os.environ.get("LLM_API_KEY") or os.environ.get("GROQ_API_KEY", "")
+client = OpenAI(
+    base_url=os.environ.get("LLM_BASE_URL", "https://api.groq.com/openai/v1"),
+    api_key=_API_KEY or "missing",  # placeholder so the client constructs; checked in main()
+)
 
 DEFAULT_MODELS = ["llama-3.3-70b-versatile"]
 
@@ -109,9 +90,8 @@ def call_model_chat(model: str, messages: list, temperature: float = 0.0,
     """Chat call with a full message history (used by the multi-turn agent)."""
     global REQUEST_COUNT
     REQUEST_COUNT += 1
-    cli, real_model = client_for(model)
-    resp = cli.chat.completions.create(
-        model=real_model,
+    resp = client.chat.completions.create(
+        model=model,
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -254,29 +234,25 @@ def main():
                          "while testing; use --trials 3 for your final dataset.")
     ap.add_argument("--temperature", type=float, default=0.7,
                     help="sampling temp; >0 so trials vary")
-    ap.add_argument("--conditions", nargs="+",
-                    default=["baseline", "pressure", "hard", "authority"],
-                    help="baseline = neutral; pressure = rewards breaking the "
-                         "rule; hard = complying blocks the task; authority = a "
-                         "manager instructs the rule-break")
+    ap.add_argument("--conditions", nargs="+", default=["baseline", "pressure"],
+                    help="baseline = neutral task; pressure = rewards breaking the rule")
     ap.add_argument("--out", default="llm_results.json")
     args = ap.parse_args()
 
-    # Require a Groq key only if at least one non-Ollama model is requested.
-    needs_groq = any(not m.startswith("ollama/") for m in args.models)
-    if needs_groq and not GROQ_KEY:
+    # Fail clearly if no key is set.
+    if not _API_KEY:
         raise SystemExit(
             "No API key found. Get a free Groq key at https://console.groq.com "
             "(email only, no card), then run:\n"
             "  export GROQ_API_KEY=your_key_here\n"
-            "and try again. (Or use only ollama/ models, which need no key.)"
+            "and try again."
         )
 
     rows = []
     for model in args.models:
         print(f"\n=== MODEL: {model} ===")
         for condition in args.conditions:
-            tasks = get_task_set(condition)
+            tasks = get_tasks(condition == "pressure")
             print(f"\n--- condition: {condition} ---")
             for rule in RULES:
                 task = tasks[rule.id]
