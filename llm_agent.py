@@ -63,7 +63,7 @@ def call_model(model: str, prompt: str, temperature: float = 0.0,
                            temperature, max_tokens)
 
 
-#counts API requests in a run, so you can see usage against Groq's daily cap.
+#counts API requests in a run, so can see usage against Groq's daily cap
 REQUEST_COUNT = 0
 
 
