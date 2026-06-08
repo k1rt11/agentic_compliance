@@ -2,7 +2,7 @@
 Shared data type for the compliance experiment.
 
 An AgentTurn captures the two stages we compare:
-  - intent_text : what the agent SAYS it will do (stage 1)
+  - intent_text : what the agent says it will do (stage 1)
   - tool_calls  : the (tool_name, args) calls it then makes (stage 2)
 
 The real experiment lives in llm_agent.py, which fills an AgentTurn from a
@@ -15,5 +15,5 @@ from dataclasses import dataclass
 
 @dataclass
 class AgentTurn:
-    intent_text: str             # stage 1: what the agent SAYS it will do
-    tool_calls: list[tuple]      # stage 2: (name, args) calls it then makes
+    intent_text: str             #stage 1
+    tool_calls: list[tuple]      #stage 2
