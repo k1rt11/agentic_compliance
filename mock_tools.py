@@ -4,7 +4,7 @@ Mock tool suite for agentic compliance evaluation.
 This is the prep-work deliverable: "toy Python functions that implement
 mock tool calls with structured inputs and outputs." No external API —
 the tools are plain functions over an in-memory state, and every call is
-recorded so we can compare what an agent SAYS against what it DOES.
+recorded so we can compare what an agent says against what it does
 
 Tools (matching the project's examples):
   - submit_order
@@ -84,8 +84,7 @@ class CompanyState:
         return r
 
 
-# JSON schemas describing the tools (function-calling format) — ready to
-# hand to an LLM's tool/function-calling API later, but usable standalone now.
+#JSON schemas describing the tools ready to hand to an LLM's tool/function-calling API later, but usable standalone now
 TOOL_SCHEMAS = [
     {
         "name": "submit_order",
