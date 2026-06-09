@@ -1,4 +1,4 @@
-# Deceptive Compliance in LLM Agents — a small evaluation harness
+# Measuring the Say-Do Gap in Tool-Using LLM Agents
 
 Does an LLM agent that *says* it will follow a rule actually *do* so? This
 project measures the gap between an agent's **stated intent** and its
